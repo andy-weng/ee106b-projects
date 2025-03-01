@@ -9,7 +9,7 @@ from scipy.integrate import quad
 import sys
 from copy import copy
 import matplotlib.pyplot as plt
-from configuration_space import Plan, BicycleConfigurationSpace
+from .configuration_space import Plan, BicycleConfigurationSpace
 
 class SinusoidPlanner():
     def __init__(self, config_space):
@@ -298,7 +298,7 @@ class SinusoidPlanner():
         goal_state_v = self.state2v(goal_state)
         delta_alpha = goal_state_v[2] - start_state_v[2]
 
-        omega = 2*np.pi / (delta_t)
+        omega = 2*np.pi / delta_t
 
         a2 = min(1, self.phi_dist*omega)
         f = lambda phi: (1/self.l)*np.tan(phi) # This is from the car model
@@ -348,12 +348,15 @@ class SinusoidPlanner():
 
         omega = 2*np.pi / delta_t
 
-        # a2 = min(1, self.phi_dist*omega)
-        a2 = 1
+        a2 = min(1, self.phi_dist*omega)
+
+        f = lambda phi: (1/self.l)*np.tan(phi) # This is from the car model
+        phi_fn = lambda t: (a2/omega)*np.sin(omega*t) + start_state_v[1]
+        integrand_phi = lambda t: f(phi_fn(t))*np.sin(omega*t) # The integrand to find beta
         
         g = lambda alpha: alpha/np.sqrt(1 - alpha**2)
-        alpha_fn = lambda t: (a2 / (2 * omega)) * np.cos(2 * omega * t) + start_state_v[2]
-        integrand = lambda t: g(alpha_fn(t)) * np.sin(omega * t)
+        alpha_fn = lambda t,a1: quad(integrand_phi,0,t,(a1)) + start_state_v[2]
+        integrand = lambda t, a1: a1*g(alpha_fn(t,a1)) * np.sin(omega * t)
 
         a1_low = 0
         a1_high = self.max_u1
@@ -361,10 +364,10 @@ class SinusoidPlanner():
 
         for i in range(100):  
             a1 = (a1_low + a1_high) / 2  
-            beta1 = (omega / np.pi) * quad(integrand, 0, delta_t)[0]  
-            print(quad(integrand, 0, delta_t))
+            beta1 = (omega / np.pi) * quad(integrand, 0, delta_t, (a1))[0]  
 
-            guess_y = a1 * (np.pi / omega) * beta1  
+            guess_y = a1 * (np.pi / omega) * beta1 
+            print (beta1)
 
             if np.abs(guess_y - delta_y) < tol:
                 print("done")

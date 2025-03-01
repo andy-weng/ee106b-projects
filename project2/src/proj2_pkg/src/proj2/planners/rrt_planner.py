@@ -6,12 +6,12 @@ Author: Amay Saxena
 """
 import sys
 import time
-# import rospy
+import rospy
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-# from .configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
-from configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
+from .configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
+# from configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
 
 class RRTGraph(object):
 
@@ -60,9 +60,9 @@ class RRTPlanner(object):
         for it in range(self.max_iter):
             sys.stdout.write("\033[F")
             print("Iteration:", it + 1)
-            # if rospy.is_shutdown():
-            #     print("Stopping path planner.")
-            #     break
+            if rospy.is_shutdown():
+                print("Stopping path planner.")
+                break
             rand_config = self.config_space.sample_config(goal)
             if self.config_space.check_collision(rand_config):
                 continue

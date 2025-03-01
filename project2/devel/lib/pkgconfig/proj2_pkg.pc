@@ -1,0 +1,8 @@
+prefix=/home/cc/ee106b/sp25/class/ee106b-aaj/workspace/project2/devel
+
+Name: proj2_pkg
+Description: Description of proj2_pkg
+Version: 0.1.0
+Cflags: -I/home/cc/ee106b/sp25/class/ee106b-aaj/workspace/project2/devel/include
+Libs: -L${prefix}/lib 
+Requires: 

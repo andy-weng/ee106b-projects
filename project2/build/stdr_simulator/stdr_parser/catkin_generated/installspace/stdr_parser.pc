@@ -1,0 +1,8 @@
+prefix=/home/cc/ee106b/sp25/class/ee106b-aaj/workspace/project2/install
+
+Name: stdr_parser
+Description: Description of stdr_parser
+Version: 0.3.2
+Cflags: -I${prefix}/include -I/usr/include
+Libs: -L${prefix}/lib -lstdr_parser /usr/lib/x86_64-linux-gnu/libtinyxml.so
+Requires: roscpp roslib stdr_msgs

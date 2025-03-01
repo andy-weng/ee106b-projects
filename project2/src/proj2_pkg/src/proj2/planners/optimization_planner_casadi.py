@@ -296,8 +296,8 @@ def main():
     u1_max = 2
     u2_max = 3
     obs_list = [[5, 5, 1], [-3, 4, 1], [4, 2, 2]]
-    q_start = np.array([0, 0, 0, 0])
-    q_goal = np.array([-2, 4, 0, 0])
+    q_start = np.array([1,1,0, 0])
+    q_goal = np.array([1,2,0, 0])
 
     ###### SETUP PROBLEM ######
     
