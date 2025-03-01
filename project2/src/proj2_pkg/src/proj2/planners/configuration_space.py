@@ -264,7 +264,24 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         """
         c1 and c2 should be numpy.ndarrays of size (4,)
         """
-        pass
+        c1 = np.array(c1)
+        c2 = np.array(c2)
+        dx = c2[0] - c1[0]
+        dy = c2[1] - c1[1]
+        dist_xy = np.sqrt(dx * dx + dy * dy)
+
+        def angle_diff(a, b): 
+            d = (a - b) % (2 * np.pi)
+            if d > np.pi:
+                d -= 2 * np.pi
+            return d 
+        
+        dtheta = angle_diff(c1[2], c2[2])
+        dist_theta = abs(dtheta)
+
+        dphi = abs(c2[3] - c1[3])
+
+        return dist_xy + 0.5*dist_theta + 0.2*dphi
 
     def sample_config(self, *args):
         """
@@ -275,14 +292,39 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         RRT implementation passes in the goal as an additional argument,
         which can be used to implement a goal-biasing heuristic.
         """
-        pass
+        goal = args[0] if args else None 
+        p_goal = 0.3  
+
+        if goal is not None and np.random.rand() < p_goal:
+            return goal
+
+        rnd = np.random.uniform(self.low_lims, self.high_lims)
+
+        return rnd
 
     def check_collision(self, c):
         """
         Returns true if a configuration c is in collision
         c should be a numpy.ndarray of size (4,)
         """
-        pass
+        x, y, theta, phi = c
+
+        if not (self.low_lims[0] <= x <= self.high_lims[0]):
+            return True
+        if not (self.low_lims[1] <= y <= self.high_lims[1]):
+            return True
+        if not (self.low_lims[2] <= theta <= self.high_lims[2]): 
+            return True
+        if not (self.low_lims[3] <= phi <= self.high_lims[3]):
+            return True
+
+        for obs in self.obstacles:
+            ox, oy, r = obs
+            dist = np.sqrt((x - ox)**2 + (y - oy)**2)
+            if dist < (r + self.robot_radius):
+                return True
+
+        return False
 
     def check_path_collision(self, path):
         """
@@ -293,7 +335,16 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         You should also ensure that the path does not exceed any state bounds,
         and the open loop inputs don't exceed input bounds.
         """
-        pass
+        for i in range(len(path)):
+            t, pos, cmd = path.times[i], path.positions[i], path.open_loop_inputs[i]
+            if self.check_collision(pos):
+                return True
+            u1, u2 = cmd
+            if (u1 < self.input_low_lims[0]) or (u1 > self.input_high_lims[0]):
+                return True
+            if (u2 < self.input_low_lims[1]) or (u2 > self.input_high_lims[1]):
+                return True
+        return False
 
     def local_plan(self, c1, c2, dt=0.01):
         """
@@ -331,4 +382,45 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         This should return a cofiguration_space.Plan object.
         """
-        pass
+        c1 = np.array(c1)
+        c2 = np.array(c2)
+
+        local_T = 0.5  
+
+        velocities = [  ( self.input_high_lims[0], 0.0 ),  
+                        ( -self.input_high_lims[0], 0.0 ), 
+                        ( self.input_high_lims[0],  self.input_high_lims[1]),  
+                        ( self.input_high_lims[0], -self.input_high_lims[1]),  
+                        ( -self.input_high_lims[0],  self.input_high_lims[1]), 
+                        ( -self.input_high_lims[0], -self.input_high_lims[1])]
+
+        best_plan = None
+        best_dist = float('inf')
+
+        for (u1, u2) in velocities:
+            path_positions = []
+            path_inputs = []
+            times = []
+            state = c1.copy()
+            t = 0.0
+            while t <= local_T + 1e-9:
+                path_positions.append(state.copy())
+                path_inputs.append([u1, u2])
+                times.append(t)
+                x, y, th, phi = state
+                x_next = x + np.cos(th)*u1*dt
+                y_next = y + np.sin(th)*u1*dt
+                th_next = th + (np.tan(phi)/self.robot_length)*u1*dt
+                phi_next = phi + u2*dt
+                phi_next = np.clip(phi_next, self.low_lims[3], self.high_lims[3])
+                state = np.array([x_next, y_next, th_next, phi_next], dtype=float)
+                t += dt
+
+            plan_candidate = Plan(np.array(times), np.array(path_positions), np.array(path_inputs), dt)
+
+            final_dist = self.distance(plan_candidate.end_position(), c2)
+            if final_dist < best_dist:
+                best_dist = final_dist
+                best_plan = plan_candidate
+
+        return best_plan

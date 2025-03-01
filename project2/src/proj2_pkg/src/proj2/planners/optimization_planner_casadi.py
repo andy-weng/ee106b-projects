@@ -31,7 +31,20 @@ def bicycle_robot_model(q, u, L=0.3, dt=0.01):
         # OR
         q = vcat([x + y, y, z]) # makes a 3x1 matrix with entries x + y, y, and z.
     """
-    return TODO
+    x = q[0]
+    y = q[1]
+    theta = q[2]
+    phi = q[3]
+
+    v = u[0]
+    steer = u[1]
+
+    x_next = x + dt*v*cos(theta)
+    y_next = y + dt*v*sin(theta)
+    theta_next = theta + dt*(v/L)*tan(phi)
+    phi_next = phi + dt*steer
+
+    return vertcat(x_next, y_next, theta_next, phi_next)
 
 def initial_cond(q_start, q_goal, n):
     """
@@ -59,7 +72,9 @@ def initial_cond(q_start, q_goal, n):
     q0 = np.zeros((4, n + 1))
     u0 = np.zeros((2, n))
 
-    # Your code here.
+    for i in range(n+1):
+        k = i/n  
+        q0[:, i] = q_start + k*(q_goal - q_start)
     
     return q0, u0
 
@@ -93,12 +108,12 @@ def objective_func(q, u, q_goal, Q, R, P):
         ui = u[:, i]
 
         # Define one term of the summation here: ((q(i) - q_goal)^T * Q * (q(i) - q_goal) + (u(i)^T * R * u(i)))
-        term = TODO  
+        term = (qi - q_goal).T @ Q @ (qi - q_goal) + (ui.T @ R @ ui)
         obj += term
 
     q_last = q[:, n]
     # Define the last term here: (q(N+1) - q_goal)^T * P * (q(N+1) - q_goal)
-    term_last = TODO
+    term_last = (q_last - q_goal).T @ P @ (q_last - q_goal)
     obj += term_last
     return obj
 
@@ -134,36 +149,39 @@ def constraints(q, u, q_lb, q_ub, u_lb, u_ub, obs_list, q_start, q_goal, L=0.3, 
     dt is the discretization timestep.
 
     """
-    constraints = []
+    eq_constraints = []
+    ineq_constraints = []
 
     # State constraints
-    constraints.extend([q_lb[0] <= q[0, :], q[0, :] <= q_ub[0]])
-    constraints.extend([                  ,                   ]) # TODO
-    constraints.extend([                  ,                   ]) # TODO
-    constraints.extend([                  ,                   ]) # TODO
+    ineq_constraints.extend([q_lb[0] <= q[0, :], q[0, :] <= q_ub[0]])
+    ineq_constraints.extend([q_lb[1] <= q[1, :], q[1, :] <= q_ub[1]]) # TODO
+    ineq_constraints.extend([q_lb[2] <= q[2, :], q[2, :] <= q_ub[2]]) # TODO
+    ineq_constraints.extend([q_lb[3] <= q[3, :], q[3, :] <= q_ub[3]]) # TODO
     
     # Input constraints
-    constraints.extend([                  ,                   ])
-    constraints.extend([                  ,                   ])
+    ineq_constraints.extend([u_lb[0] <= u[0, :], u[0, :] <= u_ub[0]])
+    ineq_constraints.extend([u_lb[1] <= u[1, :], u[1, :] <= u_ub[1]])
 
     # Dynamics constraints
     for t in range(q.shape[1] - 1):
         q_t   = q[:, t]
         q_tp1 = q[:, t + 1]
         u_t   = u[:, t]
-        constraints.append(TODO) # You should use the bicycle_robot_model function here somehow.
+        dyn = q_tp1 - bicycle_robot_model(q_t, u_t, L, dt)
+        eq_constraints.append(dyn) # You should use the bicycle_robot_model function here somehow.
 
     # Obstacle constraints
     for obj in obs_list:
         obj_x, obj_y, obj_r = obj
         for t in range(q.shape[1]):
-            constraints.append(TODO) # Define the obstacle constraints.
+            obj_constraint = ((q[0, t] - obj_x)**2 + (q[1, t] - obj_y)**2 -(obj_r**2))
+            ineq_constraints.append(obj_constraint) # Define the obstacle constraints.
 
     # Initial and final state constraints
-    constraints.append(TODO) # Constraint on start state.
-    constraints.append(TODO) # Constraint on final state.
+    eq_constraints.append(q[:, 0] - q_start) # Constraint on start state.
+    eq_constraints.append(q[:, -1] - q_goal) # Constraint on final state.
 
-    return constraints
+    return eq_constraints, ineq_constraints
 
 def plan_to_pose(q_start, q_goal, q_lb, q_ub, u_lb, u_ub, obs_list, L=0.3, n=1000, dt=0.01):
     """
@@ -194,7 +212,18 @@ def plan_to_pose(q_start, q_goal, q_lb, q_ub, u_lb, u_ub, obs_list, L=0.3, n=100
 
     opti.minimize(obj)
 
-    opti.subject_to(constraints(q, u, q_lb, q_ub, u_lb, u_ub, obs_list, q_start, q_goal, dt=dt))
+    eq_constraints, ineq_constraints = constraints(
+        q, u, q_lb, q_ub, u_lb, u_ub,
+        obs_list, q_start, q_goal, L, dt
+    )
+    for expr in eq_constraints:
+        for i in range(expr.shape[0]):
+            opti.subject_to(expr[i] == 0)
+
+    for expr in ineq_constraints:
+        for i in range(expr.shape[0]):
+            opti.subject_to(expr[i] >= 0)
+
 
     opti.set_initial(q, q0)
     opti.set_initial(u, u0)
@@ -268,7 +297,7 @@ def main():
     u2_max = 3
     obs_list = [[5, 5, 1], [-3, 4, 1], [4, 2, 2]]
     q_start = np.array([0, 0, 0, 0])
-    q_goal = np.array([7, 3, 0, 0])
+    q_goal = np.array([-2, 4, 0, 0])
 
     ###### SETUP PROBLEM ######
     

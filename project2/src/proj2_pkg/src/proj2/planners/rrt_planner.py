@@ -6,11 +6,12 @@ Author: Amay Saxena
 """
 import sys
 import time
-import rospy
+# import rospy
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from .configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
+# from .configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
+from configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
 
 class RRTGraph(object):
 
@@ -59,9 +60,9 @@ class RRTPlanner(object):
         for it in range(self.max_iter):
             sys.stdout.write("\033[F")
             print("Iteration:", it + 1)
-            if rospy.is_shutdown():
-                print("Stopping path planner.")
-                break
+            # if rospy.is_shutdown():
+            #     print("Stopping path planner.")
+            #     break
             rand_config = self.config_space.sample_config(goal)
             if self.config_space.check_collision(rand_config):
                 continue
@@ -125,8 +126,8 @@ def main():
     xy_low = [0, 0]
     xy_high = [10, 10]
     phi_max = 0.6
-    u1_max = 2
-    u2_max = 3
+    u1_max = 1
+    u2_max = 1.5
     obstacles = [[6, 3.5, 1.5], [3.5, 6.5, 1]]
 
     config = BicycleConfigurationSpace( xy_low + [-1000, -phi_max],
@@ -136,7 +137,7 @@ def main():
                                         obstacles,
                                         0.15)
 
-    planner = RRTPlanner(config, max_iter=10000, expand_dist=0.8)
+    planner = RRTPlanner(config, max_iter=5000, expand_dist=1.5)
     plan = planner.plan_to_pose(start, goal)
     planner.plot_execution()
 
