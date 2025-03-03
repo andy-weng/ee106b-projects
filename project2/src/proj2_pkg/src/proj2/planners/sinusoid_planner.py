@@ -9,7 +9,7 @@ from scipy.integrate import quad
 import sys
 from copy import copy
 import matplotlib.pyplot as plt
-from configuration_space import Plan, BicycleConfigurationSpace
+from .configuration_space import Plan, BicycleConfigurationSpace
 
 class SinusoidPlanner():
     def __init__(self, config_space):

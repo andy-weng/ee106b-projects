@@ -293,7 +293,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         which can be used to implement a goal-biasing heuristic.
         """
         goal = args[0] if args else None 
-        p_goal = 0.3  
+        p_goal = 0.5
 
         if goal is not None and np.random.rand() < p_goal:
             return goal
@@ -386,6 +386,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         c2 = np.array(c2)
 
         local_T = 0.5  
+        max_steps = int(local_T / dt)
 
         velocities = [  ( self.input_high_lims[0], 0.0 ),  
                         ( -self.input_high_lims[0], 0.0 ), 
@@ -403,7 +404,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             times = []
             state = c1.copy()
             t = 0.0
-            while t <= local_T + 1e-9:
+            for _ in range(max_steps):
                 path_positions.append(state.copy())
                 path_inputs.append([u1, u2])
                 times.append(t)
@@ -415,6 +416,8 @@ class BicycleConfigurationSpace(ConfigurationSpace):
                 phi_next = np.clip(phi_next, self.low_lims[3], self.high_lims[3])
                 state = np.array([x_next, y_next, th_next, phi_next], dtype=float)
                 t += dt
+                if t > local_T:
+                    break
 
             plan_candidate = Plan(np.array(times), np.array(path_positions), np.array(path_inputs), dt)
 

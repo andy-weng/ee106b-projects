@@ -11,7 +11,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from .configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
-# from configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
 
 class RRTGraph(object):
 

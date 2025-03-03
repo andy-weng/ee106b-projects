@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     elif args.planner == 'rrt':
         ## Edit the max_iter, expand_dist, dt and prefix_time_length arguments to your needs.
-        planner = RRTPlanner(config, max_iter=10000, expand_dist=0.6)
+        planner = RRTPlanner(config, max_iter=5000, expand_dist=0.5)
         plan = planner.plan_to_pose(controller.state, goal, dt=0.01, prefix_time_length=1)
 
     elif args.planner == 'opt':
