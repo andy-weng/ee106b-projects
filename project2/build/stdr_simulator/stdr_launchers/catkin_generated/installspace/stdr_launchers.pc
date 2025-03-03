@@ -1,8 +1,0 @@
-prefix=/home/cc/ee106b/sp25/class/ee106b-aaj/workspace/project2/install
-
-Name: stdr_launchers
-Description: Description of stdr_launchers
-Version: 0.3.2
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 

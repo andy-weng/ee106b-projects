@@ -160,8 +160,8 @@ class BicycleConverter():
         return EmptyResponse()
 
     def shutdown(self):
-    	rospy.loginfo("Shutting Down")
-    	self.command_publisher.publish(Twist()) # Stop moving
+        rospy.loginfo("Shutting Down")
+        self.command_publisher.publish(Twist()) # Stop moving
 
 if __name__ == '__main__':
     rospy.init_node("Bicycle Conversion", anonymous=True)

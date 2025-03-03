@@ -1,8 +1,0 @@
-prefix=/home/cc/ee106b/sp25/class/ee106b-aaj/workspace/project2/devel
-
-Name: stdr_gui
-Description: Description of stdr_gui
-Version: 0.3.2
-Cflags: -I/usr/include/x86_64-linux-gnu/qt5/ -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/lib/x86_64-linux-gnu/qt5//mkspecs/linux-g++ -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtUiTools -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets
-Libs: -L${prefix}/lib /usr/lib/x86_64-linux-gnu/libQt5Core.so.5.12.8 /usr/lib/x86_64-linux-gnu/libQt5Gui.so.5.12.8 /usr/lib/x86_64-linux-gnu/libQt5UiTools.a /usr/lib/x86_64-linux-gnu/libQt5Widgets.so.5.12.8
-Requires: roscpp roslib tf stdr_msgs stdr_server stdr_robot stdr_parser sensor_msgs nav_msgs qt_gui
