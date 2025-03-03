@@ -22,6 +22,7 @@ class BicycleModelController(object):
         self.pub = rospy.Publisher('/bicycle/cmd_vel', BicycleCommandMsg, queue_size=10)
         self.sub = rospy.Subscriber('/bicycle/state', BicycleStateMsg, self.subscribe)
         self.state = BicycleStateMsg()
+        self.last_tme = -1
         rospy.on_shutdown(self.shutdown)
 
     def execute_plan(self, plan):
@@ -62,7 +63,28 @@ class BicycleModelController(object):
         Returns:
             None. It simply sends the computed command to the robot.
         """
-        self.cmd(open_loop_input)
+
+        kp_phi = 1.0
+        kd_phi = 0.1
+
+        error_phi = target_position[3] - self.state[3]
+        error_phi = np.arctan2(np.sin(error_phi), np.cos(error_phi))
+
+        curr_time = rospy.Time.now()
+        if self.last_tme == -1:
+            self.last_tme = curr_time
+            self.last_phi_error = error_phi
+            d_error_phi = 0.0
+            d_error_x = 0.0
+        else:
+            dt = (curr_time - self.last_tme).to_sec()
+            d_error_phi = (error_phi - self.last_phi_error) / dt
+            self.last_time = curr_time
+            self.last_phi_error = error_phi
+
+        u1 = open_loop_input[0] 
+        u2 = open_loop_input[1] + kp_phi*error_phi + kd_phi*d_error_phi
+        self.cmd([u1,u2])
 
 
     def cmd(self, msg):

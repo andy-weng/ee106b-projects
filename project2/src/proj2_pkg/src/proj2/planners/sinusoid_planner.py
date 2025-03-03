@@ -9,7 +9,7 @@ from scipy.integrate import quad
 import sys
 from copy import copy
 import matplotlib.pyplot as plt
-from .configuration_space import Plan, BicycleConfigurationSpace
+from configuration_space import Plan, BicycleConfigurationSpace
 
 class SinusoidPlanner():
     def __init__(self, config_space):
@@ -28,7 +28,7 @@ class SinusoidPlanner():
         self.max_u1 = config_space.input_high_lims[0]
         self.max_u2 = config_space.input_high_lims[1]
 
-    def plan_to_pose(self, start_state, goal_state, t0=0.0, dt=0.01, delta_t=2.0, alpha_segments=2, y_segments=2):
+    def plan_to_pose(self, start_state, goal_state, dt = 0.01, delta_t=2):
         """
         Plans to a specific pose in (x,y,theta,phi) coordinates.  You 
         may or may not have to convert the state to a v state with state2v()
@@ -61,6 +61,7 @@ class SinusoidPlanner():
         x_g, y_g, theta_g, phi_g = goal_state
         max_abs_angle = max(abs(theta_g), abs(theta_s))
         min_abs_angle = min(abs(theta_g), abs(theta_s))
+
         if (max_abs_angle > np.pi/2) and (min_abs_angle < np.pi/2):
             raise ValueError("You'll cause a singularity here. You should add something to this function to fix it")
 
@@ -76,108 +77,31 @@ class SinusoidPlanner():
         x_path =        self.steer_x(
                             start_state, 
                             goal_state, 
-                            t0,
                             dt=dt, 
                             delta_t=delta_t
                         )
-        phi_start_time = x_path.times[-1]
+
         phi_path =      self.steer_phi(
                             x_path.end_position(), 
                             goal_state,  
-                            t0=phi_start_time,
                             dt=dt, 
                             delta_t=delta_t
                         )
-        alpha_start_time = phi_path.times[-1]
-        alpha_path = self.plan_alpha_in_segments(
-                            phi_path.end_position(),
-                            goal_state,
-                            t0=alpha_start_time,
-                            dt=dt,
-                            delta_t=delta_t,
-                            n=alpha_segments
+        alpha_path =    self.steer_alpha(
+                            phi_path.end_position(), 
+                            goal_state, 
+                            dt=dt, 
+                            delta_t=delta_t
                         )
-        
-        y_start_time = alpha_path.times[-1]
-        # y_path =        self.plan_y_in_segments(
-        #                     alpha_path.end_position(), 
-        #                     goal_state,
-        #                     t0=y_start_time,
-        #                     dt=dt,
-        #                     delta_t=delta_t,
-        #                     n = y_segments
-        #                 )     
         y_path =        self.steer_y(
                             alpha_path.end_position(), 
                             goal_state,
-                            t0=y_start_time,
                             dt=dt,
-                            delta_t=delta_t,
-                        )  
+                            delta_t=delta_t
+                        )     
+
         self.plan = Plan.chain_paths(x_path, phi_path, alpha_path, y_path)
         return self.plan
-    
-    def plan_alpha_in_segments(self, start_state, goal_state,
-                               t0=0.0, dt=0.01, delta_t=2.0, n=2):
-       
-        partial_plans = []
-        current_state = start_state
-        current_time  = t0
-
-        start_v = self.state2v(start_state)  
-        goal_v  = self.state2v(goal_state)
-        alpha_s = start_v[2]
-        alpha_g = goal_v[2]
-
-        for i in range(1, n+1):
-            frac      = i / float(n)
-            alpha_sub = alpha_s + frac*(alpha_g - alpha_s)
-
-            sub_goal_v = copy(goal_v)
-            sub_goal_v[2] = alpha_sub 
-            sub_goal_state = self.v2state(sub_goal_v)
-
-            sub_path = self.steer_alpha(current_state,
-                                        sub_goal_state,
-                                        t0=current_time,
-                                        dt=dt, delta_t=delta_t)
-
-            partial_plans.append(sub_path)
-            current_state = sub_path.end_position()
-            current_time  = sub_path.times[-1]
-        print(partial_plans)
-        return Plan.chain_paths(*partial_plans)
-    
-    def plan_y_in_segments(self, start_state, goal_state,
-                           t0=0.0, dt=0.01, delta_t=2.0, n=2):
-        
-        partial_plans = []
-        current_state = start_state
-        current_time  = t0
-
-        start_v = self.state2v(start_state)  
-        goal_v  = self.state2v(goal_state)
-        y_s = start_v[3]
-        y_g = goal_v[3]
-
-        for i in range(1, n+1):
-            frac = i / float(n)
-            y_sub = y_s + frac*(y_g - y_s)
-
-            sub_goal_v = copy(goal_v)
-            sub_goal_v[3] = y_sub
-            sub_goal_state = self.v2state(sub_goal_v)
-
-            sub_plan = self.steer_y(current_state,
-                                    sub_goal_state,
-                                    t0=current_time,
-                                    dt=dt, delta_t=delta_t)
-
-            partial_plans.append(sub_plan)
-            current_state = sub_plan.end_position()
-            current_time  = sub_plan.times[-1]
-
-        return Plan.chain_paths(*partial_plans)
 
     def plot_execution(self):
         """
@@ -267,7 +191,6 @@ class SinusoidPlanner():
             t = t + dt
         return self.v_path_to_u_path(path, start_state, dt)
 
-
     def steer_alpha(self, start_state, goal_state, t0 = 0, dt = 0.01, delta_t = 2):
         """
         Create a trajectory to move the turtlebot in the alpha direction.  
@@ -350,25 +273,38 @@ class SinusoidPlanner():
 
         a2 = min(1, self.phi_dist*omega)
 
-        f = lambda phi: (1/self.l)*np.tan(phi) # This is from the car model
-        phi_fn = lambda t: (a2/omega)*np.sin(omega*t) + start_state_v[1]
-        integrand_phi = lambda t: f(phi_fn(t))*np.sin(omega*t) # The integrand to find beta
+        def f(phi):
+            return (-1.0 / self.l) * np.tan(phi)
         
-        g = lambda alpha: alpha/np.sqrt(1 - alpha**2)
-        alpha_fn = lambda t,a1: quad(integrand_phi,0,t,(a1)) + start_state_v[2]
-        integrand = lambda t, a1: a1*g(alpha_fn(t,a1)) * np.sin(omega * t)
+        def phi_fn(t):
+            return (a2 / (2.0 * omega)) * np.sin(2.0 * omega * t) + start_state_v[1]
 
-        a1_low = 0
+        def g_of_alpha(alpha):
+            return alpha / np.sqrt(1.0 - alpha**2)
+
+        def integrand_phi(t, a1):
+            return f(phi_fn(t)) * a1 * np.sin(omega * t)
+
+        def alpha_fn(t, a1):
+            result = quad(integrand_phi, 0, t, args=(a1,))[0]
+            return result + start_state_v[2]
+
+        def integrand_y(t, a1):
+            alpha_val = alpha_fn(t, a1)
+            return g_of_alpha(alpha_val) * np.sin(omega * t)
+
+
+        a1_low = -self.max_u1
         a1_high = self.max_u1
-        tol = 0.05
+        tol = 0.1
+        a1 = 0
 
-        for i in range(100):  
+        while True:  
             a1 = (a1_low + a1_high) / 2  
-            beta1 = (omega / np.pi) * quad(integrand, 0, delta_t, (a1))[0]  
+            val    = quad(integrand_y, 0, delta_t, args=(a1,))[0]
 
-            guess_y = a1 * (np.pi / omega) * beta1 
-            print (beta1)
-
+            guess_y = -a1*val
+            print(guess_y)
             if np.abs(guess_y - delta_y) < tol:
                 print("done")
                 break  
@@ -404,21 +340,9 @@ class SinusoidPlanner():
         x, y, theta, phi = state
         return np.array([x, phi, np.sin(theta), y])
     
-    def v2state(self, v):
-        """
-        Convert [x, phi, alpha, y] -> (x,y,theta,phi).
-        Inverse of state2v assuming alpha = sin(theta).
-        """
-        x, phi, alpha, y = v
-        # Handle alpha -> theta
-        # If alpha = sin(theta), pick a principal solution. 
-        # (This can be tricky if alpha in [-1,1], but let's do a simple arcsin.)
-        theta = np.arcsin(alpha)
-        return np.array([x, y, theta, phi])
-
-    def state2v1(self,state):
+    def state2other_v(self,state):
         x,y,theta,phi = state
-        return np.array([y,phi,np.sin(theta),x])
+        return np.array([y,phi,np.cos(theta),x])
 
     def v_path_to_u_path(self, path, start_state, dt):
         """
@@ -468,11 +392,11 @@ def main():
     """Use this function if you'd like to test without ROS.
     """
     start = np.array([1, 1, 0, 0]) 
-    goal = np.array([1, 1, 0.3, 0])
+    goal = np.array([1, 1.5, 0.3, 0])
     xy_low = [0, 0]
     xy_high = [5, 5]
     phi_max = 0.6
-    u1_max = 2
+    u1_max = 4
     u2_max = 3
     obstacles = []
 
@@ -484,8 +408,7 @@ def main():
                                         0.15)
 
     planner = SinusoidPlanner(config)
-
-    plan = planner.plan_to_pose(start, goal, 0.0, 0.1, 2.0, alpha_segments=1,y_segments=4)
+    plan = planner.plan_to_pose(start, goal, 0.01, 2.0)
     planner.plot_execution()
 
 if __name__ == '__main__':

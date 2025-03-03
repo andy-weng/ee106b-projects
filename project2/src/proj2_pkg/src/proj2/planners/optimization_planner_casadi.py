@@ -71,11 +71,35 @@ def initial_cond(q_start, q_goal, n):
     """
     q0 = np.zeros((4, n + 1))
     u0 = np.zeros((2, n))
-
-    for i in range(n+1):
-        k = i/n  
-        q0[:, i] = q_start + k*(q_goal - q_start)
+    dx = q_goal[0] - q_start[0]
+    dy = q_goal[1] - q_start[1]
     
+    partial_n = n // 20  
+    mid_partial = partial_n // 2 
+    
+    mid_theta = np.pi / 4 if dy > 0 else -np.pi / 4
+        
+    for i in range(partial_n + 1):
+        t = i / partial_n
+        if i <= mid_partial:  
+            q0[0, i] = q_start[0] + 0.05*t*dx  
+            q0[1, i] = q_start[1] + 0.05*t*dy  
+            q0[2, i] = mid_theta*t  
+            q0[3, i] = 0.3*t
+        else:  
+            t_down = (i - mid_partial) / (partial_n - mid_partial)
+            q0[0, i] = q_start[0] + 0.05*(1 - t_down)*dx + 0.05*t_down*dx
+            q0[1, i] = q_start[1] + 0.05*(1 - t_down)*dy + 0.05*t_down*dy
+            q0[2, i] = mid_theta*(1 - t_down)
+            q0[3, i] = 0.3*(1 - t_down)
+    
+    for i in range(partial_n, n + 1):
+        k = (i - partial_n)/(n - partial_n)  
+        q0[0, i] = (q_start[0] + 0.05*dx) + k*(q_goal[0] - (q_start[0] + 0.05*dx))
+        q0[1, i] = (q_start[1] + 0.05*dy) + k*(q_goal[1] - (q_start[1] + 0.05*dy))
+        q0[2, i] = q_start[2] + k*(q_goal[2] - q_start[2])
+        q0[3, i] = q_start[3] + k*(q_goal[3] - q_start[3])
+
     return q0, u0
 
 def objective_func(q, u, q_goal, Q, R, P):
@@ -107,12 +131,10 @@ def objective_func(q, u, q_goal, Q, R, P):
         qi = q[:, i]
         ui = u[:, i]
 
-        # Define one term of the summation here: ((q(i) - q_goal)^T * Q * (q(i) - q_goal) + (u(i)^T * R * u(i)))
         term = (qi - q_goal).T @ Q @ (qi - q_goal) + (ui.T @ R @ ui)
         obj += term
 
     q_last = q[:, n]
-    # Define the last term here: (q(N+1) - q_goal)^T * P * (q(N+1) - q_goal)
     term_last = (q_last - q_goal).T @ P @ (q_last - q_goal)
     obj += term_last
     return obj
@@ -168,14 +190,14 @@ def constraints(q, u, q_lb, q_ub, u_lb, u_ub, obs_list, q_start, q_goal, L=0.3, 
         q_tp1 = q[:, t + 1]
         u_t   = u[:, t]
         dyn = q_tp1 - bicycle_robot_model(q_t, u_t, L, dt)
-        eq_constraints.append(dyn) # You should use the bicycle_robot_model function here somehow.
+        eq_constraints.append(dyn) 
 
     # Obstacle constraints
     for obj in obs_list:
         obj_x, obj_y, obj_r = obj
         for t in range(q.shape[1]):
             obj_constraint = ((q[0, t] - obj_x)**2 + (q[1, t] - obj_y)**2 -(obj_r**2))
-            ineq_constraints.append(obj_constraint) # Define the obstacle constraints.
+            ineq_constraints.append(obj_constraint) 
 
     # Initial and final state constraints
     eq_constraints.append(q[:, 0] - q_start) # Constraint on start state.
@@ -290,14 +312,16 @@ def main():
     dt = 0.01
     L = 0.3
 
-    xy_low = [-5, -1]
-    xy_high = [10, 10]
+    xy_low = [0, 0]
+    xy_high = [5, 5]
     phi_max = 0.6
     u1_max = 2
     u2_max = 3
-    obs_list = [[5, 5, 1], [-3, 4, 1], [4, 2, 2]]
-    q_start = np.array([1,1,0, 0])
-    q_goal = np.array([1,2,0, 0])
+    # obs_list = [[6, 3.5, 1.5], [3.5, 6.5, 1]]
+    # obs_list = [[2,5,1],[5,5,1],[8,5,1],[8,2,1],[2,8,1]]
+    obs_list = []
+    q_start = np.array([1, 1, 0, 0])
+    q_goal = np.array([4.9,2.5, 0, 0])
 
     ###### SETUP PROBLEM ######
     
