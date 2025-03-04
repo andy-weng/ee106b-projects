@@ -71,34 +71,37 @@ def initial_cond(q_start, q_goal, n):
     """
     q0 = np.zeros((4, n + 1))
     u0 = np.zeros((2, n))
-    dx = q_goal[0] - q_start[0]
-    dy = q_goal[1] - q_start[1]
+    for i in range(n+1):
+        k = i/n
+        q0[:,i] = q_start+k*(q_goal-q_start)
+    # dx = q_goal[0] - q_start[0]
+    # dy = q_goal[1] - q_start[1]
     
-    partial_n = n // 20  
-    mid_partial = partial_n // 2 
+    # partial_n = n // 20  
+    # mid_partial = partial_n // 2 
     
-    mid_theta = np.pi / 4 if dy > 0 else -np.pi / 4
+    # mid_theta = np.pi / 4 if dy > 0 else -np.pi / 4
         
-    for i in range(partial_n + 1):
-        t = i / partial_n
-        if i <= mid_partial:  
-            q0[0, i] = q_start[0] + 0.05*t*dx  
-            q0[1, i] = q_start[1] + 0.05*t*dy  
-            q0[2, i] = mid_theta*t  
-            q0[3, i] = 0.3*t
-        else:  
-            t_down = (i - mid_partial) / (partial_n - mid_partial)
-            q0[0, i] = q_start[0] + 0.05*(1 - t_down)*dx + 0.05*t_down*dx
-            q0[1, i] = q_start[1] + 0.05*(1 - t_down)*dy + 0.05*t_down*dy
-            q0[2, i] = mid_theta*(1 - t_down)
-            q0[3, i] = 0.3*(1 - t_down)
+    # for i in range(partial_n + 1):
+    #     t = i / partial_n
+    #     if i <= mid_partial:  
+    #         q0[0, i] = q_start[0] + 0.05*t*dx  
+    #         q0[1, i] = q_start[1] + 0.05*t*dy  
+    #         q0[2, i] = mid_theta*t  
+    #         q0[3, i] = 0.3*t
+    #     else:  
+    #         t_down = (i - mid_partial) / (partial_n - mid_partial)
+    #         q0[0, i] = q_start[0] + 0.05*(1 - t_down)*dx + 0.05*t_down*dx
+    #         q0[1, i] = q_start[1] + 0.05*(1 - t_down)*dy + 0.05*t_down*dy
+    #         q0[2, i] = mid_theta*(1 - t_down)
+    #         q0[3, i] = 0.3*(1 - t_down)
     
-    for i in range(partial_n, n + 1):
-        k = (i - partial_n)/(n - partial_n)  
-        q0[0, i] = (q_start[0] + 0.05*dx) + k*(q_goal[0] - (q_start[0] + 0.05*dx))
-        q0[1, i] = (q_start[1] + 0.05*dy) + k*(q_goal[1] - (q_start[1] + 0.05*dy))
-        q0[2, i] = q_start[2] + k*(q_goal[2] - q_start[2])
-        q0[3, i] = q_start[3] + k*(q_goal[3] - q_start[3])
+    # for i in range(partial_n, n + 1):
+    #     k = (i - partial_n)/(n - partial_n)  
+    #     q0[0, i] = (q_start[0] + 0.05*dx) + k*(q_goal[0] - (q_start[0] + 0.05*dx))
+    #     q0[1, i] = (q_start[1] + 0.05*dy) + k*(q_goal[1] - (q_start[1] + 0.05*dy))
+    #     q0[2, i] = q_start[2] + k*(q_goal[2] - q_start[2])
+    #     q0[3, i] = q_start[3] + k*(q_goal[3] - q_start[3])
 
     return q0, u0
 

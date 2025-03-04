@@ -299,7 +299,7 @@ class SinusoidPlanner():
         tol = 0.1
         a1 = 0
 
-        while True:  
+        for i in range(100):  
             a1 = (a1_low + a1_high) / 2  
             val    = quad(integrand_y, 0, delta_t, args=(a1,))[0]
 
@@ -392,11 +392,11 @@ def main():
     """Use this function if you'd like to test without ROS.
     """
     start = np.array([1, 1, 0, 0]) 
-    goal = np.array([1, 1.5, 0.3, 0])
+    goal = np.array([1, 1, 0.7, 0])
     xy_low = [0, 0]
     xy_high = [5, 5]
     phi_max = 0.6
-    u1_max = 4
+    u1_max = 10
     u2_max = 3
     obstacles = []
 
@@ -408,7 +408,7 @@ def main():
                                         0.15)
 
     planner = SinusoidPlanner(config)
-    plan = planner.plan_to_pose(start, goal, 0.01, 2.0)
+    plan = planner.plan_to_pose(start, goal, 0.01, 2.3)
     planner.plot_execution()
 
 if __name__ == '__main__':
